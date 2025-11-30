@@ -13,6 +13,17 @@ export const useVoiceRecognition = (onTranscript: (text: string) => void) => {
   const [isListening, setIsListening] = useState(false);
   const [interimTranscript, setInterimTranscript] = useState('');
   const recognitionRef = useRef<any>(null);
+  const isListeningRef = useRef(false);
+  const onTranscriptRef = useRef(onTranscript);
+
+  // Keep refs updated
+  useEffect(() => {
+    onTranscriptRef.current = onTranscript;
+  }, [onTranscript]);
+
+  useEffect(() => {
+    isListeningRef.current = isListening;
+  }, [isListening]);
 
   useEffect(() => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -39,20 +50,25 @@ export const useVoiceRecognition = (onTranscript: (text: string) => void) => {
         setInterimTranscript(interim);
         
         if (final) {
-          onTranscript(final);
+          onTranscriptRef.current(final);
         }
       };
       
       recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
         console.error('Speech recognition error:', event.error);
-        if (event.error !== 'no-speech') {
+        if (event.error !== 'no-speech' && event.error !== 'aborted') {
           setIsListening(false);
         }
       };
       
       recognition.onend = () => {
-        if (isListening) {
-          recognition.start();
+        // Auto-restart if still supposed to be listening
+        if (isListeningRef.current) {
+          try {
+            recognition.start();
+          } catch (e) {
+            // Recognition might already be running
+          }
         }
       };
       
@@ -61,33 +77,45 @@ export const useVoiceRecognition = (onTranscript: (text: string) => void) => {
     
     return () => {
       if (recognitionRef.current) {
-        recognitionRef.current.stop();
+        try {
+          recognitionRef.current.stop();
+        } catch (e) {
+          // Ignore errors on cleanup
+        }
       }
     };
-  }, [onTranscript, isListening]);
+  }, []); // Empty dependency array - only run once
 
   const startListening = useCallback(() => {
-    if (recognitionRef.current && !isListening) {
-      recognitionRef.current.start();
-      setIsListening(true);
+    if (recognitionRef.current && !isListeningRef.current) {
+      try {
+        recognitionRef.current.start();
+        setIsListening(true);
+      } catch (e) {
+        console.error('Failed to start recognition:', e);
+      }
     }
-  }, [isListening]);
+  }, []);
 
   const stopListening = useCallback(() => {
-    if (recognitionRef.current && isListening) {
-      recognitionRef.current.stop();
+    if (recognitionRef.current && isListeningRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (e) {
+        // Ignore errors
+      }
       setIsListening(false);
       setInterimTranscript('');
     }
-  }, [isListening]);
+  }, []);
 
   const toggleListening = useCallback(() => {
-    if (isListening) {
+    if (isListeningRef.current) {
       stopListening();
     } else {
       startListening();
     }
-  }, [isListening, startListening, stopListening]);
+  }, [startListening, stopListening]);
 
   return {
     isListening,
@@ -95,6 +123,7 @@ export const useVoiceRecognition = (onTranscript: (text: string) => void) => {
     startListening,
     stopListening,
     toggleListening,
-    isSupported: !!recognitionRef.current
+    isSupported: typeof window !== 'undefined' && 
+      !!(window as any).SpeechRecognition || !!(window as any).webkitSpeechRecognition
   };
 };
