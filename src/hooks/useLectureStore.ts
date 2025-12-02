@@ -50,14 +50,25 @@ export const useLectureStore = () => {
     }
   }, [currentSession, liveBullets]);
 
-  const generateQuiz = useCallback(async (questionCount: number) => {
+  const generateQuiz = useCallback(async (questionCount: number, sessionId?: string) => {
     setIsGeneratingQuiz(true);
     
-    // Combine live bullets and history bullets for quiz generation
-    const allBullets = [
-      ...liveBullets,
-      ...sessions.flatMap(s => s.bullets)
-    ].slice(0, 50); // Limit to recent 50 bullets
+    // Get bullets based on session selection
+    let allBullets;
+    if (sessionId) {
+      // Find specific session
+      const targetSession = sessionId === currentSession?.id 
+        ? currentSession 
+        : sessions.find(s => s.id === sessionId);
+      allBullets = targetSession?.bullets || [];
+    } else {
+      // Combine live bullets and history bullets
+      allBullets = [
+        ...liveBullets,
+        ...sessions.flatMap(s => s.bullets)
+      ];
+    }
+    allBullets = allBullets.slice(0, 50); // Limit to recent 50 bullets
     
     // Simulate AI quiz generation (will be replaced with actual API call)
     const mockQuestions: QuizQuestion[] = [];
@@ -111,7 +122,7 @@ export const useLectureStore = () => {
     
     setQuizQuestions(mockQuestions);
     setIsGeneratingQuiz(false);
-  }, [liveBullets, sessions]);
+  }, [liveBullets, sessions, currentSession]);
 
   const addChatMessage = useCallback((content: string, role: 'user' | 'assistant', isAudio = false) => {
     const message: ChatMessage = {
