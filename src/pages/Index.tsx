@@ -11,6 +11,7 @@ import { useTextToSpeech } from '@/hooks/useTextToSpeech';
 import { useLectureStore } from '@/hooks/useLectureStore';
 import { useToast } from '@/hooks/use-toast';
 import { useAINotesGenerator } from '@/hooks/useAINotesGenerator';
+import { useChatAssistant } from '@/hooks/useChatAssistant';
 
 const Index = () => {
   const { toast } = useToast();
@@ -35,6 +36,7 @@ const Index = () => {
 
   const { isCapturing, currentFrame, startCapture, stopCapture } = useScreenCapture();
   const { speak, stop: stopSpeaking, isSpeaking } = useTextToSpeech();
+  const { askQuestion, isProcessing: isChatProcessing } = useChatAssistant({ liveBullets });
 
   // AI Notes Generator
   const handleAIBullets = useCallback((bullets: string[]) => {
@@ -117,24 +119,14 @@ const Index = () => {
   }, [isCapturing, analyzeContent]);
 
   // Handle chat voice input
-  const handleChatTranscript = useCallback((text: string) => {
+  const handleChatTranscript = useCallback(async (text: string) => {
     addChatMessage(text, 'user', true);
-    
-    // Simulate AI response (will be replaced with actual API)
-    setTimeout(() => {
-      const responses = [
-        "That's a great question about the lecture content. Let me explain further...",
-        "Based on the notes captured, I can clarify that point for you.",
-        "I understand your question. The key concept here is...",
-        "Let me summarize what was covered regarding your question..."
-      ];
-      const response = responses[Math.floor(Math.random() * responses.length)];
-      addChatMessage(response, 'assistant');
-      speak(response);
-    }, 1000);
-    
     setChatListening(false);
-  }, [addChatMessage, speak]);
+    
+    const response = await askQuestion(text);
+    addChatMessage(response, 'assistant');
+    speak(response);
+  }, [addChatMessage, speak, askQuestion]);
 
   const {
     isListening: isChatListening,
@@ -168,16 +160,13 @@ const Index = () => {
     toggleChatListening();
   }, [isChatListening, toggleChatListening]);
 
-  const handleSendTextMessage = useCallback((text: string) => {
+  const handleSendTextMessage = useCallback(async (text: string) => {
     addChatMessage(text, 'user');
     
-    // Simulate AI response
-    setTimeout(() => {
-      const response = "I've noted your question. Based on the lecture content, here's what I can tell you...";
-      addChatMessage(response, 'assistant');
-      speak(response);
-    }, 1000);
-  }, [addChatMessage, speak]);
+    const response = await askQuestion(text);
+    addChatMessage(response, 'assistant');
+    speak(response);
+  }, [addChatMessage, speak, askQuestion]);
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -227,12 +216,14 @@ const Index = () => {
         
         {/* Right Column - Quiz */}
         <div className="col-span-12 lg:col-span-4">
-          <QuizPanel
+        <QuizPanel
             questions={quizQuestions}
             isGenerating={isGeneratingQuiz}
             onGenerate={generateQuiz}
             onClear={clearQuiz}
             hasBullets={liveBullets.length > 0 || sessions.some(s => s.bullets.length > 0)}
+            sessions={sessions}
+            currentSession={currentSession}
           />
         </div>
       </main>

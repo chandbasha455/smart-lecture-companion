@@ -68,20 +68,22 @@ serve(async (req) => {
     const messages: any[] = [
       {
         role: "system",
-        content: `You are a lecture note-taking assistant. Your job is to analyze lecture content and create concise bullet-point notes.
+        content: `You are a lecture note-taking assistant. Extract ONLY the most important key points.
 
-RULES:
-- Output ONLY bullet points, no paragraphs
-- Each bullet should be a single, clear concept
-- Keep bullets short (max 15 words)
-- Focus on key definitions, facts, and concepts
-- If there's text visible on screen, extract the main points
-- If there's speech transcript, summarize the key ideas
-- Return 2-5 bullet points per analysis
-- Format: Return JSON array of strings, each string is one bullet point
+CRITICAL RULES:
+- Maximum 3-4 bullet points per analysis
+- Each bullet MUST be under 10 words
+- Focus on: definitions, key terms, formulas, main concepts ONLY
+- DO NOT copy entire sentences from slides
+- DO NOT include examples or explanations
+- Summarize and condense information
+- Format: Return JSON array of short strings
 
-Example output:
-["Definition: Compiler converts high-level code to machine code", "Lexical analysis breaks code into tokens", "Syntax analysis builds parse tree"]`
+Good examples:
+["Compiler: converts code to machine language", "O(n) = linear time complexity", "TCP ensures reliable data delivery"]
+
+Bad examples (too long):
+["The compiler is a program that converts high-level programming language code into machine code that can be executed"]`
       }
     ];
 

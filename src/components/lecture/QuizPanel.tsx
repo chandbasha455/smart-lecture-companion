@@ -4,12 +4,16 @@ import { Button } from '@/components/ui/button';
 import { QuizQuestion } from '@/types/lecture';
 import { cn } from '@/lib/utils';
 
+import { Session } from '@/types/lecture';
+
 interface QuizPanelProps {
   questions: QuizQuestion[];
   isGenerating: boolean;
-  onGenerate: (count: number) => void;
+  onGenerate: (count: number, sessionId?: string) => void;
   onClear: () => void;
   hasBullets: boolean;
+  sessions: Session[];
+  currentSession: Session | null;
 }
 
 export const QuizPanel = ({
@@ -17,13 +21,18 @@ export const QuizPanel = ({
   isGenerating,
   onGenerate,
   onClear,
-  hasBullets
+  hasBullets,
+  sessions,
+  currentSession
 }: QuizPanelProps) => {
   const [questionCount, setQuestionCount] = useState(5);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [showAnswers, setShowAnswers] = useState<Set<string>>(new Set());
+  const [selectedSession, setSelectedSession] = useState<string>('all');
 
   const questionCounts = [5, 10, 15, 20];
+  
+  const allSessions = currentSession ? [currentSession, ...sessions] : sessions;
 
   const handleAnswer = (questionId: string, answer: string) => {
     setAnswers(prev => ({ ...prev, [questionId]: answer }));
@@ -86,10 +95,30 @@ export const QuizPanel = ({
               </div>
             </div>
             
+            {allSessions.length > 0 && (
+              <div>
+                <label className="text-xs text-muted-foreground mb-2 block">
+                  Source session:
+                </label>
+                <select
+                  value={selectedSession}
+                  onChange={(e) => setSelectedSession(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg bg-muted/50 border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <option value="all">All Sessions</option>
+                  {allSessions.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} ({s.bullets.length} notes)
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            
             <Button
               variant="glow"
               className="w-full bg-gradient-accent"
-              onClick={() => onGenerate(questionCount)}
+              onClick={() => onGenerate(questionCount, selectedSession === 'all' ? undefined : selectedSession)}
               disabled={isGenerating || !hasBullets}
             >
               {isGenerating ? (
